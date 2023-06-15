@@ -1,5 +1,5 @@
 # Social Media API
-This project provides a set of APIs to implement various social media features. It is built using Python, Django, and Django Rest Framework.
+This project provides a set of APIs to implement various social media features. It is built using Python, Django, and the Django Rest Framework.
 
 ## Installation Instructions (Docker)
 
@@ -31,6 +31,8 @@ To run the project using Docker, follow these steps:
 #### This will start the project and make it accessible at `http://localhost:8000`.
 
 # Swagger Link
+![image](https://github.com/VISHU1999/DRF-with-swagger-example/assets/70027559/d542616c-667f-442c-9a8d-b8395aa00b02)
+
 ```
 http://0.0.0.0:8000/doc/
 ```
