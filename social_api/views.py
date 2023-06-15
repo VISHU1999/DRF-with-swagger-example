@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema
 from rest_framework import filters, generics, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, MethodNotAllowed
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
@@ -36,14 +37,17 @@ class BaseException(APIException):
         super().__init__()
 
 
+@extend_schema(description="Register User,Email is case insensitive")
 class RegisterView(generics.CreateAPIView):
     """
     View for user registration.
     """
 
     queryset = User.objects.all()
-    permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
+    permission_classes = [
+        AllowAny,
+    ]
 
 
 class UserLoginView(ObtainAuthToken):
@@ -51,6 +55,8 @@ class UserLoginView(ObtainAuthToken):
     View for user login.
     """
 
+    @extend_schema(request=UserLoginSerializer, methods=["POST"])
+    @extend_schema(description="Email is case insensitive", methods=["POST"])
     def post(self, request, *args, **kwargs):
         serializer = UserLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -61,6 +67,9 @@ class UserLoginView(ObtainAuthToken):
         return Response({"token": token.key})
 
 
+@extend_schema(
+    description="User Search by exact email or first/last name", methods=["GET"]
+)
 class UserSearchView(generics.ListAPIView):
     """
     View for searching users.
@@ -73,6 +82,7 @@ class UserSearchView(generics.ListAPIView):
     search_fields = ["first_name", "last_name", "=email"]
 
 
+@extend_schema(description="Get User friend list", methods=["GET"])
 class UserFriendsList(generics.ListAPIView):
     """
     View for listing user's friends.
@@ -85,6 +95,8 @@ class UserFriendsList(generics.ListAPIView):
         return User.objects.filter(username=self.request.user.username)
 
 
+@extend_schema(description="Send Friend Request to User by User Id", methods=["POST"])
+@extend_schema(description="Get Pending Friend Request", methods=["GET"])
 class FriendshipRequestAPIView(viewsets.ModelViewSet):
     """
     ViewSet for managing friendship requests.
@@ -98,14 +110,11 @@ class FriendshipRequestAPIView(viewsets.ModelViewSet):
         "put",
     ]
 
-    def get_serializer_class(self):
-        if self.action == "PUT":
-            return None
-        return super().get_serializer_class()
-
     def get_queryset(self):
         return Friendship.objects.filter(to_user=self.request.user, status="pending")
 
+    @extend_schema(request=None, methods=["PUT"])
+    @extend_schema(description="Accept friend request", methods=["PUT"])
     @action(detail=True, methods=["put"])
     def accept_request(self, request, *args, **kwargs):
         """
@@ -131,6 +140,8 @@ class FriendshipRequestAPIView(viewsets.ModelViewSet):
 
         return Response({"message": "Friendship request accepted."})
 
+    @extend_schema(request=None, methods=["PUT"])
+    @extend_schema(description="Reject friend request", methods=["PUT"])
     @action(detail=True, methods=["put"])
     def reject_request(self, request, *args, **kwargs):
         """
@@ -150,3 +161,10 @@ class FriendshipRequestAPIView(viewsets.ModelViewSet):
             friendship_request.save()
 
         return Response({"message": "Friendship request rejected."})
+
+    def update(self, request, *args, **kwargs):
+        """
+        Handle updates for the viewset.
+        Raises MethodNotAllowed exception for regular PUT requests.
+        """
+        raise MethodNotAllowed("PUT")
